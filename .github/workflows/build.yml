@@ -25,10 +25,10 @@ jobs:
 
     - name: Download and Extract OpenWrt Image Builder
       run: |
-        IB_URL="https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET }}-${{ env.SUBTARGET }}.Linux-x86_64.tar.xz"
+        IB_URL="https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET }}-${{ env.SUBTARGET }}.Linux-x86_64.tar.zst"
         wget $IB_URL
-        tar -xJf openwrt-imagebuilder-*.tar.xz
-        mv openwrt-imagebuilder-*/ ib/
+        tar -xf *.tar.zst
+        mv openwrt-imagebuilder-* ib
 
     - name: Add Custom Repositories (Remittor Zapret)
       run: |
