@@ -32,8 +32,8 @@ jobs:
 
     - name: Add Custom Repositories (Remittor Zapret)
       run: |
-        # Правильно отключаем проверку подписей (просто комментируем оригинальную строку, ничего не добавляя вниз)
-        sed -i 's/option check_signature/# option check_signature/g' ib/repositories.conf
+        # Ищем ВСЕ файлы .conf в папке сборщика и намертво глушим проверку подписей цифровых ключей
+        find ib/ -name "*.conf" -exec sed -i 's/option check_signature/# option check_signature/g' {} +
         
         # Добавляем пути к репозиториям Запрета
         echo "src/gz remittor_zapret_target https://raw.githubusercontent.com/remittor/opkg-repo/master/${{ env.ZAPRET_REPO_VERSION }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}" >> ib/repositories.conf
@@ -51,7 +51,7 @@ jobs:
     - name: Build Firmware Image
       run: |
         cd ib
-        # Добавили "zapret" в список пакетов явно, чтобы у Image Builder не возникло путаницы с зависимостями
+        # Собираем систему. Запрет и интерфейс теперь зашьются без криков про безопасность
         make image PROFILE="${{ env.PROFILE }}" PACKAGES="luci luci-app-zapret zapret curl" FILES="files"
 
     - name: Upload Firmware Artifacts
