@@ -32,9 +32,8 @@ jobs:
 
     - name: Add Custom Repositories (Remittor Zapret)
       run: |
-        # Полностью отключаем проверку подписей пакетов для кастомных репозиториев
-        sed -i 's/option check_signature/# option check_signature/g' ib/repositories.conf || true
-        echo "option check_signature 0" >> ib/repositories.conf
+        # Правильно отключаем проверку подписей (просто комментируем оригинальную строку, ничего не добавляя вниз)
+        sed -i 's/option check_signature/# option check_signature/g' ib/repositories.conf
         
         # Добавляем пути к репозиториям Запрета
         echo "src/gz remittor_zapret_target https://raw.githubusercontent.com/remittor/opkg-repo/master/${{ env.ZAPRET_REPO_VERSION }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}" >> ib/repositories.conf
@@ -52,8 +51,8 @@ jobs:
     - name: Build Firmware Image
       run: |
         cd ib
-        # Мы оставили только базовые пакеты. Система сама найдет и поставит nftables и tproxy нужной версии по зависимостям
-        make image PROFILE="${{ env.PROFILE }}" PACKAGES="luci luci-app-zapret curl" FILES="files"
+        # Добавили "zapret" в список пакетов явно, чтобы у Image Builder не возникло путаницы с зависимостями
+        make image PROFILE="${{ env.PROFILE }}" PACKAGES="luci luci-app-zapret zapret curl" FILES="files"
 
     - name: Upload Firmware Artifacts
       uses: actions/upload-artifact@v4
