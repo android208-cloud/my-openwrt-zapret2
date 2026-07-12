@@ -1,0 +1,88 @@
+
+config main 'config'
+	option run_on_boot '1'
+	option FWTYPE 'nftables'
+	option POSTNAT '1'
+	option FLOWOFFLOAD 'none'
+	option INIT_APPLY_FW '1'
+	option DISABLE_IPV4 '0'
+	option DISABLE_IPV6 '1'
+	option FILTER_TTL_EXPIRED_ICMP '1'
+	option MODE_FILTER 'autohostlist'
+	option DISABLE_CUSTOM '1'
+	option WS_USER 'daemon'
+	option DAEMON_LOG_ENABLE '1'
+	option DAEMON_LOG_SIZE_MAX '2000'
+	option DAEMON_LOG_FILE '/tmp/zapret2+<DAEMON_NAME>+<DAEMON_IDNUM>+<DAEMON_CFGNAME>.log'
+	option AUTOHOSTLIST_INCOMING_MAXSEQ '4096'
+	option AUTOHOSTLIST_RETRANS_MAXSEQ '32768'
+	option AUTOHOSTLIST_RETRANS_RESET '1'
+	option AUTOHOSTLIST_RETRANS_THRESHOLD '3'
+	option AUTOHOSTLIST_FAIL_THRESHOLD '3'
+	option AUTOHOSTLIST_FAIL_TIME '60'
+	option AUTOHOSTLIST_UDP_IN '1'
+	option AUTOHOSTLIST_UDP_OUT '4'
+	option AUTOHOSTLIST_DEBUGLOG '1'
+	option NFQWS2_ENABLE '1'
+	option DESYNC_MARK '0x40000000'
+	option DESYNC_MARK_POSTNAT '0x20000000'
+	option FILTER_MARK '	'
+	option NFQWS2_PORTS_TCP '80,443,1984,2053,2083,2087,2096,5222,8443'
+	option NFQWS2_PORTS_UDP '443,590-600,1400,3478-3481,5349,19294-19344,49152-65535'
+	option NFQWS2_TCP_PKT_OUT '20'
+	option NFQWS2_TCP_PKT_IN '10'
+	option NFQWS2_UDP_PKT_OUT '5'
+	option NFQWS2_UDP_PKT_IN '3'
+	option NFQWS2_PORTS_TCP_KEEPALIVE '0'
+	option NFQWS2_PORTS_UDP_KEEPALIVE '0'
+	option NFQWS2_OPT '
+--lua-init=@/opt/zapret2/lua/zapret-lib.lua
+--lua-init=@/opt/zapret2/lua/zapret-antidpi.lua
+--lua-init=@/opt/zapret2/lua/zapret-auto.lua
+--blob=quic_initial:@/opt/zapret2/blobs/quic_initial.bin
+--blob=tls_clienthello:@/opt/zapret2/blobs/tls_clienthello.bin
+
+# =================================================================
+# БЛОК 1: TCP ТРАФИК (Умный авто-режим)
+# =================================================================
+--filter-tcp=443,80,1984,5222
+--hostlist=/opt/zapret2/ipset/zapret-hosts-user.txt
+--hostlist-auto=/opt/zapret2/ipset/zapret-hosts-auto.txt
+--hostlist-exclude=/opt/zapret2/ipset/zapret-hosts-user-exclude.txt
+--filter-l7=http,tls,mtproto
+--payload=tls_client_hello,mtproto_initial
+--lua-desync=circular:fails=2:time=300:retrans=3:nld=2
+--lua-desync=fake:blob=tls_clienthello:tls_mod=rnd,dupsid,sni=fonts.google.com:tcp_seq=10000:strategy=1
+--lua-desync=multisplit:pos=1,midsld:seqovl=1:seqovl_pattern=tls_clienthello:tcp_ts_up:strategy=1
+--lua-desync=fake:blob=0x00000000:tcp_ack=-66000:tls_mod=rnd,dupsid,sni=www.google.com:repeats=2:strategy=2
+--lua-desync=multisplit:pos=1,midsld:strategy=2
+--lua-desync=hostfakesplit:tcp_md5:tcp_ts_up:strategy=3
+--payload=http_req
+--lua-desync=http_methodeol:badsum
+
+--new
+# =================================================================
+# БЛОК 2: UDP 443 / QUIC (Авто-режим для HTTP/3 и YouTube)
+# =================================================================
+--filter-udp=443
+--hostlist=/opt/zapret2/ipset/zapret-hosts-user.txt
+--hostlist-auto=/opt/zapret2/ipset/zapret-hosts-auto.txt
+--hostlist-exclude=/opt/zapret2/ipset/zapret-hosts-user-exclude.txt
+--filter-l7=quic
+--payload=quic_initial
+--lua-desync=fake:blob=quic_initial:repeats=11
+
+--new
+# =================================================================
+# БЛОК 3: UDP ДРУГИЕ ПОРТЫ (Голос Дискорда, Вайргард)
+# =================================================================
+--filter-udp=590-600,1400,5349,19294-19344
+--filter-l7=wireguard,stun,discord,mtproto,unknown
+--out-range=<n2
+--payload=wireguard_initiation,wireguard_response,wireguard_cookie,stun,discord_ip_discovery,mtproto_initial,unknown
+--lua-desync=circular:fails=2:time=300:retrans=3:nld=2
+--lua-desync=fake:repeats=6:strategy=1
+--lua-desync=fake:blob=quic_initial:repeats=6:strategy=2
+'
+	option _NFQWS2_OPT '--lua-init=@/opt/zapret2/lua/zapret-lib.lua --lua-init=@/opt/zapret2/lua/zapret-antidpi.lua --lua-init=@/opt/zapret2/lua/zapret-auto.lua --blob=quic_initial:@/opt/zapret2/blobs/quic_initial.bin --blob=tls_clienthello:@/opt/zapret2/blobs/tls_clienthello.bin --filter-tcp=443,80,1984,5222 --filter-l7=http,tls,mtproto --payload=tls_client_hello,mtproto_initial --lua-desync=circular:fails=2:time=300:retrans=3:nld=2 --lua-desync=fake:blob=tls_clienthello:tls_mod=rnd,dupsid,sni=fonts.google.com:tcp_seq=10000:strategy=1 --lua-desync=multisplit:pos=1,midsld:seqovl=1:seqovl_pattern=tls_clienthello:tcp_ts_up:strategy=1 --lua-desync=fake:blob=0x00000000:tcp_ack=-66000:tls_mod=rnd,dupsid,sni=www.google.com:repeats=2:strategy=2 --lua-desync=multisplit:pos=1,midsld:strategy=2 --lua-desync=hostfakesplit:host=ozon.ru:midhost=host-2:seqovl=sniext+3:seqovl_pattern=tls_clienthello:badsum:tcp_md5:tcp_ts_up:strategy=3 --lua-desync=hostfakesplit:tcp_md5:tcp_ts_up:strategy=3 --payload=http_req --lua-desync=http_methodeol:badsum --new --filter-udp=443 --filter-l7=quic --payload=quic_initial --lua-desync=fake:blob=quic_initial:repeats=11 --new --filter-udp=590-600,1400,3478-3481,5349,19294-19344,49152-65535 --filter-l7=wireguard,stun,discord,mtproto,unknown --out-range=<n2 --payload=wireguard_initiation,wireguard_response,wireguard_cookie,stun,discord_ip_discovery,mtproto_initial,unknown --lua-desync=circular:fails=2:time=300:retrans=3:nld=2 --lua-desync=fake:repeats=6:strategy=1 --lua-desync=fake:blob=quic_initial:repeats=6:strategy=2'
+
