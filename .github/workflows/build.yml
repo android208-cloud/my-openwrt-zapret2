@@ -21,7 +21,6 @@ jobs:
     - name: Install Build Dependencies
       run: |
         sudo apt update
-        # Добавили пакет zstd в самый конец списка, чтобы сервер умел распаковывать новые архивы OpenWrt
         sudo apt install -y build-essential gawk git texinfo libssl-dev xz-utils rsync wget unzip zstd
 
     - name: Download and Extract OpenWrt Image Builder
@@ -33,7 +32,11 @@ jobs:
 
     - name: Add Custom Repositories (Remittor Zapret)
       run: |
-        # Добавляем два пути: для системных модулей ядра и прямой путь к пакетам под архитектуру твоего Cudy (aarch64_cortex-a53)
+        # Полностью отключаем проверку подписей пакетов для кастомных репозиториев
+        sed -i 's/option check_signature/# option check_signature/g' ib/repositories.conf || true
+        echo "option check_signature 0" >> ib/repositories.conf
+        
+        # Добавляем пути к репозиториям Запрета
         echo "src/gz remittor_zapret_target https://raw.githubusercontent.com/remittor/opkg-repo/master/${{ env.ZAPRET_REPO_VERSION }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}" >> ib/repositories.conf
         echo "src/gz remittor_zapret_packages https://raw.githubusercontent.com/remittor/opkg-repo/master/${{ env.ZAPRET_REPO_VERSION }}/packages/aarch64_cortex-a53/zapret" >> ib/repositories.conf
 
@@ -49,7 +52,8 @@ jobs:
     - name: Build Firmware Image
       run: |
         cd ib
-        make image PROFILE="${{ env.PROFILE }}" PACKAGES="luci luci-app-zapret curl nftables kmod-nft-tproxy" FILES="files"
+        # Мы оставили только базовые пакеты. Система сама найдет и поставит nftables и tproxy нужной версии по зависимостям
+        make image PROFILE="${{ env.PROFILE }}" PACKAGES="luci luci-app-zapret curl" FILES="files"
 
     - name: Upload Firmware Artifacts
       uses: actions/upload-artifact@v4
