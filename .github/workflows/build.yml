@@ -5,7 +5,7 @@ on:
 
 env:
   OPENWRT_VERSION: "24.10.7"                     # Версия для скачивания самого Image Builder
-  ZAPRET_REPO_VERSION: "24.10"                   # Версия для репозитория Запрета (у автора папка без семерки)
+  ZAPRET_REPO_VERSION: "24.10"                   # Версия для репозитория Запрета
   TARGET: "mediatek"                             # Твой процессор Mediatek
   SUBTARGET: "filogic"                           # Твое семейство чипов Filogic
   PROFILE: "cudy_wr3000p-v1"                     # Твой роутер Cudy WR3000P v1
@@ -21,7 +21,8 @@ jobs:
     - name: Install Build Dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential gawk git texinfo libssl-dev xz-utils rsync wget unzip
+        # Добавили пакет zstd в самый конец списка, чтобы сервер умел распаковывать новые архивы OpenWrt
+        sudo apt install -y build-essential gawk git texinfo libssl-dev xz-utils rsync wget unzip zstd
 
     - name: Download and Extract OpenWrt Image Builder
       run: |
@@ -32,8 +33,9 @@ jobs:
 
     - name: Add Custom Repositories (Remittor Zapret)
       run: |
-        # Здесь мы используем ZAPRET_REPO_VERSION (24.10) вместо версии с семеркой, чтобы избежать 404 ошибки
-        echo "src/gz remittor_zapret https://raw.githubusercontent.com/remittor/opkg-repo/master/${{ env.ZAPRET_REPO_VERSION }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}" >> ib/repositories.conf
+        # Добавляем два пути: для системных модулей ядра и прямой путь к пакетам под архитектуру твоего Cudy (aarch64_cortex-a53)
+        echo "src/gz remittor_zapret_target https://raw.githubusercontent.com/remittor/opkg-repo/master/${{ env.ZAPRET_REPO_VERSION }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}" >> ib/repositories.conf
+        echo "src/gz remittor_zapret_packages https://raw.githubusercontent.com/remittor/opkg-repo/master/${{ env.ZAPRET_REPO_VERSION }}/packages/aarch64_cortex-a53/zapret" >> ib/repositories.conf
 
     - name: Prepare Custom Files
       run: |
