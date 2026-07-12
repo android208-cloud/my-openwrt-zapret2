@@ -4,10 +4,11 @@ on:
   workflow_dispatch: # Позволяет запускать сборку вручную кнопкой
 
 env:
-  OPENWRT_VERSION: "24.10.7"
-  TARGET: "mediatek"
-  SUBTARGET: "filogic"
-  PROFILE: "cudy_wr3000p-v1"
+  OPENWRT_VERSION: "24.10.7"                     # Версия для скачивания самого Image Builder
+  ZAPRET_REPO_VERSION: "24.10"                   # Версия для репозитория Запрета (у автора папка без семерки)
+  TARGET: "mediatek"                             # Твой процессор Mediatek
+  SUBTARGET: "filogic"                           # Твое семейство чипов Filogic
+  PROFILE: "cudy_wr3000p-v1"                     # Твой роутер Cudy WR3000P v1
 
 jobs:
   build:
@@ -31,16 +32,14 @@ jobs:
 
     - name: Add Custom Repositories (Remittor Zapret)
       run: |
-        # Добавляем сторонний репозиторий автора пакета zapret для OpenWrt
-        echo "src/gz remittor_zapret https://raw.githubusercontent.com/remittor/opkg-repo/master/${{ env.OPENWRT_VERSION }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}" >> ib/repositories.conf
+        # Здесь мы используем ZAPRET_REPO_VERSION (24.10) вместо версии с семеркой, чтобы избежать 404 ошибки
+        echo "src/gz remittor_zapret https://raw.githubusercontent.com/remittor/opkg-repo/master/${{ env.ZAPRET_REPO_VERSION }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}" >> ib/repositories.conf
 
     - name: Prepare Custom Files
       run: |
-        # Если папка files существует в репозитории, копируем её в Image Builder
         if [ -d "files" ]; then
           mkdir -p ib/files
           cp -r files/* ib/files/
-          # Даем права на запуск скриптам zapret
           chmod +x ib/files/opt/zapret2/init.d/zapret || true
           chmod +x ib/files/opt/zapret2/ipset/*.sh || true
         fi
@@ -48,7 +47,6 @@ jobs:
     - name: Build Firmware Image
       run: |
         cd ib
-        # Собираем прошивку, принудительно внедряя интерфейс, утилиты и zapret
         make image PROFILE="${{ env.PROFILE }}" PACKAGES="luci luci-app-zapret curl nftables kmod-nft-tproxy" FILES="files"
 
     - name: Upload Firmware Artifacts
