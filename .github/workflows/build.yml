@@ -20,7 +20,7 @@ jobs:
     - name: Install Build Dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential gawk git textinfo libssl-dev xz-utils rsync wget unzip
+        sudo apt install -y build-essential gawk git texinfo libssl-dev xz-utils rsync wget unzip
 
     - name: Download and Extract OpenWrt Image Builder
       run: |
