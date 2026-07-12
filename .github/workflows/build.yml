@@ -1,0 +1,58 @@
+name: Build Custom OpenWrt with Zapret
+
+on:
+  workflow_dispatch: # Позволяет запускать сборку вручную кнопкой
+
+env:
+  OPENWRT_VERSION: "24.10.7"
+  TARGET: "mediatek"
+  SUBTARGET: "filogic"
+  PROFILE: "cudy_wr3000p-v1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Install Build Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential gawk git textinfo libssl-dev xz-utils rsync wget unzip
+
+    - name: Download and Extract OpenWrt Image Builder
+      run: |
+        IB_URL="https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET }}-${{ env.SUBTARGET }}.Linux-x86_64.tar.xz"
+        wget $IB_URL
+        tar -xJf openwrt-imagebuilder-*.tar.xz
+        mv openwrt-imagebuilder-*/ ib/
+
+    - name: Add Custom Repositories (Remittor Zapret)
+      run: |
+        # Добавляем сторонний репозиторий автора пакета zapret для OpenWrt
+        echo "src/gz remittor_zapret https://raw.githubusercontent.com/remittor/opkg-repo/master/${{ env.OPENWRT_VERSION }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}" >> ib/repositories.conf
+
+    - name: Prepare Custom Files
+      run: |
+        # Если папка files существует в репозитории, копируем её в Image Builder
+        if [ -d "files" ]; then
+          mkdir -p ib/files
+          cp -r files/* ib/files/
+          # Даем права на запуск скриптам zapret
+          chmod +x ib/files/opt/zapret2/init.d/zapret || true
+          chmod +x ib/files/opt/zapret2/ipset/*.sh || true
+        fi
+
+    - name: Build Firmware Image
+      run: |
+        cd ib
+        # Собираем прошивку, принудительно внедряя интерфейс, утилиты и zapret
+        make image PROFILE="${{ env.PROFILE }}" PACKAGES="luci luci-app-zapret curl nftables kmod-nft-tproxy" FILES="files"
+
+    - name: Upload Firmware Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: custom-openwrt-firmware
+        path: ib/bin/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/*-sysupgrade.bin
